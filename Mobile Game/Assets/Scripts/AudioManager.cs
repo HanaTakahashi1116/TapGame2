@@ -6,6 +6,7 @@ public class AudioManager : MonoBehaviour
 
     private AudioSource bgmSource;
     private AudioSource seSource;
+    private Coroutine bgmSequenceCoroutine;
 
     private AudioClip[] seClips;
     private AudioClip bgmClip;
@@ -39,7 +40,15 @@ public class AudioManager : MonoBehaviour
 
         // 音源のプロシージャル合成
         GenerateSEClips();
-        GenerateBGMClip();
+        
+        // 用意されたBGMをロードする。失敗した場合はプロシージャル生成する
+        bgmClip = Resources.Load<AudioClip>("Music/Title");
+        if (bgmClip == null)
+        {
+            Debug.LogWarning("External BGM clip 'Music/Title' not found in Resources. Generating synthwave BGM instead.");
+            GenerateBGMClip();
+        }
+        
         GenerateCountdownClips();
 
         if (bgmClip != null)
@@ -246,5 +255,80 @@ public class AudioManager : MonoBehaviour
 
         bgmClip = AudioClip.Create("SYNTHWAVE_BGM", numSamples, 1, sampleRate, false);
         bgmClip.SetData(samples, 0);
+    }
+
+    public void PlayBGM(string clipName)
+    {
+        if (bgmSource == null) return;
+
+        // ジングル再生シーケンスが走っている場合は停止する
+        if (bgmSequenceCoroutine != null)
+        {
+            StopCoroutine(bgmSequenceCoroutine);
+            bgmSequenceCoroutine = null;
+        }
+
+        // すでに同じクリップがロードされて再生中の場合は無視する
+        string clipNameOnly = System.IO.Path.GetFileNameWithoutExtension(clipName);
+        if (bgmSource.clip != null && (bgmSource.clip.name == clipName || bgmSource.clip.name == clipNameOnly) && bgmSource.isPlaying) return;
+
+        AudioClip clip = Resources.Load<AudioClip>(clipName);
+        if (clip != null)
+        {
+            bgmSource.Stop();
+            bgmSource.clip = clip;
+            bgmSource.loop = true; // BGMはループ再生
+            bgmSource.Play();
+        }
+        else
+        {
+            Debug.LogWarning($"BGM clip '{clipName}' not found in Resources.");
+        }
+    }
+
+    public void PlayJingleAndThenBGM(string jingleName, string nextBgmName)
+    {
+        if (bgmSource == null) return;
+
+        if (bgmSequenceCoroutine != null)
+        {
+            StopCoroutine(bgmSequenceCoroutine);
+        }
+
+        bgmSequenceCoroutine = StartCoroutine(JingleSequence(jingleName, nextBgmName));
+    }
+
+    private System.Collections.IEnumerator JingleSequence(string jingleName, string nextBgmName)
+    {
+        AudioClip jingleClip = Resources.Load<AudioClip>(jingleName);
+        if (jingleClip != null)
+        {
+            bgmSource.Stop();
+            bgmSource.clip = jingleClip;
+            bgmSource.loop = false; // ジングルはループしない
+            bgmSource.Play();
+
+            // ジングル再生終了まで待機
+            yield return new WaitForSeconds(jingleClip.length);
+        }
+        else
+        {
+            Debug.LogWarning($"Jingle clip '{jingleName}' not found in Resources.");
+        }
+
+        // 次のBGMを再生
+        AudioClip nextClip = Resources.Load<AudioClip>(nextBgmName);
+        if (nextClip != null)
+        {
+            bgmSource.clip = nextClip;
+            bgmSource.loop = true;
+            bgmSource.Play();
+        }
+        else
+        {
+            Debug.LogWarning($"Next BGM clip '{nextBgmName}' not found in Resources.");
+        }
+
+        bgmSequenceCoroutine = null;
     }
 }

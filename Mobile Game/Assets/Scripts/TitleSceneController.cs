@@ -32,6 +32,11 @@ public class TitleSceneController : MonoBehaviour
     private void Start()
     {
         isStarting = false;
+
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayBGM("Music/Title");
+        }
         
         // 初期状態では文字を半透明（または非表示）にして点灯演出へ
         if (titleText != null) titleText.color = new Color(1f, 1f, 1f, 0f);

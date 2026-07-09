@@ -41,6 +41,10 @@ public class GameManager : MonoBehaviour
         spawnRangeMax.y = 1.2f;
 
         EnsureManagersExist();
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayBGM("Music/Game");
+        }
         ScoreManager.score = 0; // スコアをリセット
         timeRemaining = 30.0f;  // タイマーリセット
         isGameOver = false;     // ステートリセット

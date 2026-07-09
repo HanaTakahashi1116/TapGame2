@@ -26,11 +26,21 @@ public class ResultSceneController : MonoBehaviour
             resultText.text = "CLEAR!";
             ApplyNeonGlow(resultText, new Color(1f, 0.85f, 0.1f), 3.5f); // ネオンゴールド/イエロー
             PlayConfettiEffect();
+
+            if (AudioManager.Instance != null)
+            {
+                AudioManager.Instance.PlayJingleAndThenBGM("Music/Game Clear", "Music/Title");
+            }
         }
         else
         {
             resultText.text = "GAME OVER";
             ApplyNeonGlow(resultText, new Color(1f, 0.15f, 0.15f), 3.5f); // ネオンレッド
+            
+            if (AudioManager.Instance != null)
+            {
+                AudioManager.Instance.PlayJingleAndThenBGM("Music/Game Over", "Music/Title");
+            }
         }
 
         // スコアとハイスコアのGlow適用
