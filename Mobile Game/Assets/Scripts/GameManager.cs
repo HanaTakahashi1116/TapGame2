@@ -24,6 +24,11 @@ public class GameManager : MonoBehaviour
     // ★ 新規：メインゲームのUI（ゲージや点数）をまとめるグループオブジェクト ★
     public GameObject gameUIGroup;
 
+    // 画面サイズに合わせた動的な生成範囲・UI回避領域用の変数
+    private float dynamicAvoidMinY = 0f;
+    private float dynamicAvoidMaxY = 0f;
+    private bool hasAvoidanceRange = false;
+
     private Color[] neonColors = new Color[]
     {
         new Color(1f, 0.05f, 0.6f), // ネオンピンク
@@ -37,8 +42,8 @@ public class GameManager : MonoBehaviour
         // ターゲットの生成スピードを調整（0.35秒からちょうど良い0.45秒に緩和）
         spawnInterval = 0.45f;
 
-        // 画面上部にあるネオンゲージUIとターゲットの被りを防ぐため、生成範囲の上限を強制制限
-        spawnRangeMax.y = 1.2f;
+        // UIと画面アスペクト比に基づき、動的に生成範囲とUI回避領域を計算
+        CalculateSpawnAndAvoidanceRanges();
 
         EnsureManagersExist();
         if (AudioManager.Instance != null)
@@ -90,6 +95,58 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    private void CalculateSpawnAndAvoidanceRanges()
+    {
+        Camera mainCam = Camera.main;
+        if (mainCam == null) return;
+
+        // 画面のアスペクト比とカメラサイズから、画面外に出ない安全な世界座標を計算
+        float orthographicSize = mainCam.orthographicSize;
+        float aspect = (float)Screen.width / Screen.height;
+        float halfWidth = orthographicSize * aspect;
+        float halfHeight = orthographicSize;
+
+        // ターゲットが画面の端で見切れないようにするための余白 (マージン)
+        float marginX = 0.65f; 
+        float marginY = 0.65f; 
+
+        spawnRangeMin = new Vector2(-halfWidth + marginX, -halfHeight + marginY);
+        spawnRangeMax = new Vector2(halfWidth - marginX, halfHeight - marginY);
+
+        // gameUIGroup内のUI要素のワールド座標範囲を動的に取得して回避エリアを設定
+        if (gameUIGroup != null)
+        {
+            RectTransform[] uiTransforms = gameUIGroup.GetComponentsInChildren<RectTransform>(true);
+            float minY = float.MaxValue;
+            float maxY = float.MinValue;
+            bool foundUI = false;
+
+            Vector3[] corners = new Vector3[4];
+            foreach (RectTransform rt in uiTransforms)
+            {
+                // gameUIGroup自身（画面全体を覆う親オブジェクト）は除く
+                if (rt == gameUIGroup.GetComponent<RectTransform>()) continue;
+
+                rt.GetWorldCorners(corners);
+                for (int i = 0; i < 4; i++)
+                {
+                    if (corners[i].y < minY) minY = corners[i].y;
+                    if (corners[i].y > maxY) maxY = corners[i].y;
+                }
+                foundUI = true;
+            }
+
+            if (foundUI)
+            {
+                // UIの上下に安全マージンを設ける
+                float uiSafetyMargin = 0.4f;
+                dynamicAvoidMinY = minY - uiSafetyMargin;
+                dynamicAvoidMaxY = maxY + uiSafetyMargin;
+                hasAvoidanceRange = true;
+            }
+        }
+    }
+
     private IEnumerator CountdownCoroutine()
     {
         for (int count = 3; count >= 1; count--)
@@ -126,7 +183,7 @@ public class GameManager : MonoBehaviour
         float elapsed = 0f;
         
         Material mat = countdownText.fontMaterial;
-        mat.SetColor("_UnderlayColor", new Color(glowColor.r, glowColor.g, glowColor.b, 0.9f));
+        mat.DisableKeyword("UNDERLAY_ON");
 
         while (elapsed < duration)
         {
@@ -137,7 +194,7 @@ public class GameManager : MonoBehaviour
             float alpha = Mathf.Lerp(1f, 0f, t);
 
             countdownText.transform.localScale = Vector3.one * scale;
-            countdownText.color = new Color(1f, 1f, 1f, alpha);
+            countdownText.color = new Color(glowColor.r, glowColor.g, glowColor.b, alpha);
 
             yield return null;
         }
@@ -204,12 +261,38 @@ public class GameManager : MonoBehaviour
         int maxAttempts = 15;
         float minDistance = 1.35f;
 
+        // UI（タイム・スコアのバーおよびテキスト）と被らないようにするためのY座標除外設定
+        float avoidMinY = hasAvoidanceRange ? dynamicAvoidMinY : -2.4f;
+        float avoidMaxY = hasAvoidanceRange ? dynamicAvoidMaxY : 0.0f;
+
         GameObject[] existingObjects = GameObject.FindGameObjectsWithTag("Respawn");
 
         for (int attempt = 0; attempt < maxAttempts; attempt++)
         {
             float randomX = Random.Range(spawnRangeMin.x, spawnRangeMax.x);
-            float randomY = Random.Range(spawnRangeMin.y, spawnRangeMax.y);
+            
+            // Y座標は除外範囲を避けて、下部エリアまたは上部エリアから選択
+            float randomY;
+            float lowerHeight = Mathf.Max(0f, avoidMinY - spawnRangeMin.y);
+            float upperHeight = Mathf.Max(0f, spawnRangeMax.y - avoidMaxY);
+            float totalHeight = lowerHeight + upperHeight;
+            
+            if (totalHeight > 0f)
+            {
+                if (Random.Range(0f, totalHeight) < lowerHeight)
+                {
+                    randomY = Random.Range(spawnRangeMin.y, avoidMinY); // 下部エリア
+                }
+                else
+                {
+                    randomY = Random.Range(avoidMaxY, spawnRangeMax.y); // 上部エリア
+                }
+            }
+            else
+            {
+                randomY = Random.Range(spawnRangeMin.y, spawnRangeMax.y);
+            }
+
             Vector3 testPos = new Vector3(randomX, randomY, 0f);
 
             bool isOverlapping = false;

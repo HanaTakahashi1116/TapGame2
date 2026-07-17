@@ -39,8 +39,16 @@ public class TitleSceneController : MonoBehaviour
         }
         
         // 初期状態では文字を半透明（または非表示）にして点灯演出へ
-        if (titleText != null) titleText.color = new Color(1f, 1f, 1f, 0f);
-        if (startText != null) startText.color = new Color(1f, 1f, 1f, 0f);
+        if (titleText != null)
+        {
+            titleText.color = new Color(1f, 1f, 1f, 0f);
+            titleText.fontMaterial.DisableKeyword("UNDERLAY_ON");
+        }
+        if (startText != null)
+        {
+            startText.color = new Color(1f, 1f, 1f, 0f);
+            startText.fontMaterial.DisableKeyword("UNDERLAY_ON");
+        }
 
         StartCoroutine(TitleSequenceCoroutine());
     }
@@ -60,6 +68,9 @@ public class TitleSceneController : MonoBehaviour
     {
         yield return new WaitForSeconds(0.3f); // 起動直後に少し間を空ける
 
+        Color targetTitleColor = new Color(1f, 0.05f, 0.6f); // ネオンピンク
+        Color targetStartColor = new Color(0f, 0.9f, 1f);   // ネオンシアン
+
         // 1. タイトルテキストのネオン点灯（チカチカッとネオンサインが灯るような演出）
         if (titleText != null)
         {
@@ -69,18 +80,18 @@ public class TitleSceneController : MonoBehaviour
             foreach (float interval in flashIntervals)
             {
                 // 点灯
-                titleText.color = Color.white;
+                titleText.color = new Color(targetTitleColor.r, targetTitleColor.g, targetTitleColor.b, 1f);
                 titleMat.SetFloat("_UnderlaySoftness", 0.1f); // 光彩を鋭く
                 yield return new WaitForSeconds(interval);
 
                 // 消灯
-                titleText.color = new Color(1f, 1f, 1f, 0.08f);
+                titleText.color = new Color(targetTitleColor.r, targetTitleColor.g, targetTitleColor.b, 0.08f);
                 titleMat.SetFloat("_UnderlaySoftness", 0.9f); // ボケボケに
                 yield return new WaitForSeconds(interval);
             }
 
             // 完全に点灯
-            titleText.color = Color.white;
+            titleText.color = new Color(targetTitleColor.r, targetTitleColor.g, targetTitleColor.b, 1f);
             titleMat.SetFloat("_UnderlaySoftness", 0.55f);
         }
 
@@ -88,7 +99,7 @@ public class TitleSceneController : MonoBehaviour
         if (startText != null)
         {
             yield return new WaitForSeconds(0.15f);
-            startText.color = Color.white;
+            startText.color = new Color(targetStartColor.r, targetStartColor.g, targetStartColor.b, 1f);
         }
 
         // 3. ループ待機アニメーション（スタートテキストをゆっくりとネオンの脈動のように明滅）
@@ -106,7 +117,7 @@ public class TitleSceneController : MonoBehaviour
                 float alpha = 0.45f + (wave + 1f) * 0.275f; // アルファ 0.45〜1.0
                 float scale = 1.0f + (wave + 1f) * 0.02f; // 僅かにパルス
                 
-                startText.color = new Color(1f, 1f, 1f, alpha);
+                startText.color = new Color(targetStartColor.r, targetStartColor.g, targetStartColor.b, alpha);
                 startText.transform.localScale = Vector3.one * scale;
             }
 
@@ -140,7 +151,7 @@ public class TitleSceneController : MonoBehaviour
             startText.text = "GO!!";
             startText.color = new Color(0f, 0.9f, 1f, 1f); // ネオンシアン
             Material startMat = startText.fontMaterial;
-            startMat.SetColor("_UnderlayColor", new Color(0f, 0.9f, 1f, 0.9f));
+            startMat.DisableKeyword("UNDERLAY_ON");
         }
 
         // 超高速テンポ：0.13秒間だけ「チチチッ！」と高速明滅させて即座に遷移

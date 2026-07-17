@@ -85,15 +85,11 @@ public class ResultSceneController : MonoBehaviour
     private void ApplyNeonGlow(TextMeshProUGUI text, Color glowColor, float size)
     {
         text.fontStyle = FontStyles.Bold | FontStyles.Italic;
+        text.color = glowColor; // 元のネオン色を文字色に設定
         
         // テキスト個別のマテリアルインスタンスを取得して設定
         Material mat = text.fontMaterial;
-        mat.EnableKeyword("UNDERLAY_ON");
-        mat.SetColor("_UnderlayColor", new Color(glowColor.r, glowColor.g, glowColor.b, 0.85f));
-        mat.SetFloat("_UnderlayOffsetX", 0f); // 完全に文字の真後ろに配置（Zファイティングなし）
-        mat.SetFloat("_UnderlayOffsetY", 0f);
-        mat.SetFloat("_UnderlayDilate", size); // 光の太さ
-        mat.SetFloat("_UnderlaySoftness", 0.55f); // ぼかし
+        mat.DisableKeyword("UNDERLAY_ON"); // 周りのもやもや枠（きしょい影）を除去
     }
 
     private void EnsureManagersExist()

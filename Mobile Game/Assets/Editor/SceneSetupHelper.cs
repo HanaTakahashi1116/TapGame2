@@ -40,14 +40,10 @@ public class SceneSetupHelper
     private static void ApplyNeonGlow(TextMeshProUGUI text, Color glowColor, float size)
     {
         text.fontStyle = FontStyles.Bold | FontStyles.Italic;
+        text.color = glowColor; // 元のネオン色を文字色に設定
         
         Material mat = text.fontMaterial;
-        mat.EnableKeyword("UNDERLAY_ON");
-        mat.SetColor("_UnderlayColor", new Color(glowColor.r, glowColor.g, glowColor.b, 0.9f));
-        mat.SetFloat("_UnderlayOffsetX", 0f);
-        mat.SetFloat("_UnderlayOffsetY", 0f);
-        mat.SetFloat("_UnderlayDilate", size);
-        mat.SetFloat("_UnderlaySoftness", 0.55f);
+        mat.DisableKeyword("UNDERLAY_ON");
     }
 
     private static void CreateNeonMaterial()
